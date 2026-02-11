@@ -14,7 +14,7 @@
     <meta name="theme-color" content="#0f172a">
     <meta name="description" content="Desafío fitness para amigos. Registra tus rutinas y compite por el primer puesto.">
     
-    <!-- Favicon / Icon (Usando un emoji de pesa como fallback rápido) -->
+    <!-- Favicon / Icon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏋️‍♂️</text></svg>">
     <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏋️‍♂️</text></svg>">
 
@@ -27,39 +27,34 @@
             color: #f8fafc;
             touch-action: manipulation;
             -webkit-tap-highlight-color: transparent;
-            /* Evita el scroll elástico molesto en iOS */
-            overflow-x: hidden;
-            position: fixed;
+            margin: 0;
+            padding: 0;
             width: 100%;
             height: 100%;
         }
         #root {
-            height: 100%;
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
+            min-height: 100vh;
         }
-        /* Custom scrollbar para un look más limpio */
+        /* Custom scrollbar */
         ::-webkit-scrollbar { width: 0px; background: transparent; }
         
         /* Ajuste para notch de iPhone */
         @supports (padding-top: env(safe-area-inset-top)) {
-          header {
-            padding-top: calc(1.5rem + env(safe-area-inset-top));
-          }
-          nav {
-            padding-bottom: calc(1rem + env(safe-area-inset-bottom));
-          }
+          header { padding-top: calc(1.5rem + env(safe-area-inset-top)); }
+          nav { padding-bottom: calc(1rem + env(safe-area-inset-bottom)); }
         }
     </style>
 <script type="importmap">
 {
   "imports": {
-    "react": "https://esm.sh/react@^19.2.4",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "react": "https://esm.sh/react@19.0.0",
+    "react-dom": "https://esm.sh/react-dom@19.0.0",
+    "react-dom/client": "https://esm.sh/react-dom@19.0.0/client",
+    "@google/genai": "https://esm.sh/@google/genai@1.40.0",
+    "firebase/app": "https://esm.sh/firebase@10.7.1/app",
+    "firebase/firestore": "https://esm.sh/firebase@10.7.1/firestore",
     "react/": "https://esm.sh/react@^19.2.4/",
-    "@google/genai": "https://esm.sh/@google/genai@^1.40.0",
-    "firebase/app": "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js",
-    "firebase/firestore": "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
     "firebase/": "https://esm.sh/firebase@^12.9.0/"
   }
 }
@@ -67,5 +62,7 @@
 </head>
 <body>
     <div id="root"></div>
+    <!-- CRITICAL: Carga del punto de entrada de la aplicación -->
+    <script type="module" src="index.tsx"></script>
 </body>
 </html>

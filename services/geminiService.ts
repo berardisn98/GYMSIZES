@@ -3,8 +3,13 @@ import { GoogleGenAI } from "@google/genai";
 import { WorkoutLog } from "../types";
 
 export const getAIPerformanceAdvice = async (logs: WorkoutLog[]): Promise<string> => {
-  // Fix: Initialize GoogleGenAI strictly using process.env.API_KEY as a named parameter
-  const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY });
+  const apiKey = process.env.API_KEY;
+  
+  if (!apiKey) {
+    return "Configura tu API_KEY en Vercel para recibir consejos personalizados.";
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
   
   const lastLogs = logs.slice(0, 5).map(l => 
     `${l.date}: ${l.routineName} (${l.exercises.map(e => `${e.name} ${e.weight}kg`).join(', ')})`
@@ -21,9 +26,9 @@ export const getAIPerformanceAdvice = async (logs: WorkoutLog[]): Promise<string
       model: 'gemini-3-flash-preview',
       contents: prompt,
     });
-    // Fix: Directly access the .text property from GenerateContentResponse
     return response.text || "Sigue empujando, la constancia es la clave.";
   } catch (error) {
-    return "Analizando tus fibras musculares... ¡Sigue así!";
+    console.error("Gemini Error:", error);
+    return "¡Sigue entrenando duro! La constancia es lo que trae los resultados.";
   }
 };
