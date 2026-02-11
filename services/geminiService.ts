@@ -4,7 +4,7 @@ import { WorkoutLog } from "../types";
 
 export const getAIPerformanceAdvice = async (logs: WorkoutLog[]): Promise<string> => {
   // Fix: Initialize GoogleGenAI strictly using process.env.API_KEY as a named parameter
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY });
   
   const lastLogs = logs.slice(0, 5).map(l => 
     `${l.date}: ${l.routineName} (${l.exercises.map(e => `${e.name} ${e.weight}kg`).join(', ')})`
