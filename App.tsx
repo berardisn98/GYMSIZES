@@ -27,7 +27,7 @@ const App: React.FC = () => {
   const [sessionProgress, setSessionProgress] = useState<Record<string, (SetProgress)[]>>({});
   const [editingSet, setEditingSet] = useState<{ exId: string, setIndex: number, reps: number, kg: string, lbs: string } | null>(null);
   
-  const [coachAdvice, setCoachAdvice] = useState<string>("Cargando datos...");
+  const [coachAdvice, setCoachAdvice] = useState<string>("Preparando consejos personalizados...");
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isAddingRoutine, setIsAddingRoutine] = useState(false);
   const [newRoutineName, setNewRoutineName] = useState("");
@@ -71,9 +71,15 @@ const App: React.FC = () => {
     return () => { unsubRoutines?.(); unsubMyLogs?.(); };
   }, [currentUser]);
 
+  // Efecto mejorado para el Coach IA
   useEffect(() => {
-    if (logs.length > 0) getAIPerformanceAdvice(logs).then(setCoachAdvice);
-  }, [logs.length]);
+    if (logs.length > 0) {
+      setCoachAdvice("El Coach está analizando tus progresos...");
+      getAIPerformanceAdvice(logs).then(advice => setCoachAdvice(advice));
+    } else {
+      setCoachAdvice("¡Bienvenido! Registra tu primer entrenamiento para recibir consejos personalizados.");
+    }
+  }, [logs]);
 
   const leaderboardStats = useMemo(() => {
     return friends.map(friend => {

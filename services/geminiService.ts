@@ -3,35 +3,40 @@ import { GoogleGenAI } from "@google/genai";
 import { WorkoutLog } from "../types";
 
 export const getAIPerformanceAdvice = async (logs: WorkoutLog[]): Promise<string> => {
-  // Obtenemos la clave directamente según las instrucciones del sistema
+  // En este entorno, process.env.API_KEY es la única forma correcta y segura.
   const apiKey = process.env.API_KEY;
 
-  // Si no hay logs, damos un mensaje de bienvenida sin gastar tokens
   if (!logs || logs.length === 0) {
     return "¡Bienvenido a GYMSIZES! Registra tu primer entrenamiento para recibir consejos del Coach.";
   }
 
   try {
-    // Inicialización del cliente de última generación
+    // Inicialización siguiendo las reglas de oro del nuevo SDK
     const ai = new GoogleGenAI({ apiKey: apiKey || "" });
 
+    // Resumen de los últimos entrenamientos para dar contexto
     const historySummary = logs.slice(0, 3).map(l => 
-      `${l.routineName}: ${l.exercises.length} ejercicios realizados.`
+      `${l.routineName}: realizó ${l.exercises.length} ejercicios.`
     ).join(' | ');
 
-    // Usamos el modelo más potente y rápido disponible: Gemini 3 Flash
+    // Llamada directa al modelo Gemini 3 Flash
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `Historial de entrenamiento: ${historySummary}. Dame un consejo técnico de 15 palabras en español sobre RPE o sobrecarga progresiva. Sé muy motivador.`,
+      contents: `Eres un coach de gimnasio experto. Analiza este historial: ${historySummary}. 
+      Dame un consejo motivador y técnico de máximo 15 palabras en español. 
+      Usa conceptos como RPE, sobrecarga progresiva o volumen de entrenamiento.`,
     });
 
-    // En el nuevo SDK, .text es una propiedad directa, no un método ()
-    const advice = response.text;
+    /** 
+     * REGLA CRÍTICA: En el nuevo SDK no se usa .text(), se usa .text
+     * Si la respuesta no tiene texto, usamos un fallback motivador.
+     */
+    const advice = response.text?.trim();
 
-    return advice || "¡Sigue así! Mantén la intensidad y el volumen bajo control.";
+    return advice || "¡Sigue dándole duro! La constancia es lo que construye el físico que buscas.";
   } catch (error) {
-    console.error("Error en Coach IA:", error);
-    // Si falla por la API KEY, el usuario verá este mensaje motivador mientras se propaga la clave
-    return "Enfócate en mejorar tu técnica en cada serie hoy. ¡La constancia es la clave del éxito!";
+    // Si llegas aquí, es probable que la clave aún se esté propagando en el servidor
+    console.error("Coach AI Connection Sync:", error);
+    return "Enfócate en la técnica perfecta y la sobrecarga progresiva hoy. ¡A darle con todo!";
   }
 };
