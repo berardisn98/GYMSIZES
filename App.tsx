@@ -91,6 +91,14 @@ const App: React.FC = () => {
     setConfirmModal({ show: true, title, message, onConfirm: () => { action(); setConfirmModal(prev => ({ ...prev, show: false })); } });
   };
 
+  const handleLogout = () => {
+    triggerConfirm("CERRAR SESIÓN", "¿Estás seguro de que quieres cerrar tu sesión actual?", () => {
+      localStorage.removeItem(STORAGE_KEYS.SESSION);
+      setCurrentUser(null);
+      setView('dash');
+    });
+  };
+
   const syncWeights = (val: string, unit: 'kg' | 'lbs', targetSetter: (kg: string, lbs: string) => void) => {
     const num = parseFloat(val) || 0;
     if (unit === 'kg') {
@@ -198,15 +206,15 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-24 selection:bg-emerald-500/30">
       
-      {/* MODAL DE CONFIRMACIÓN - Z-INDEX MÁXIMO */}
+      {/* MODAL DE CONFIRMACIÓN */}
       {confirmModal.show && (
         <div className="fixed inset-0 z-[999] flex items-center justify-center p-6 bg-slate-950/95 backdrop-blur-md animate-in fade-in">
-          <div className="bg-slate-900 border border-slate-800 p-8 rounded-[2.5rem] w-full max-w-sm shadow-2xl animate-in zoom-in-95">
+          <div className="bg-slate-900 border border-slate-800 p-8 rounded-[2.5rem] w-full max-w-sm shadow-2xl animate-in zoom-in-95 text-center">
             <h4 className="text-xl font-black italic uppercase text-red-500 mb-2">{confirmModal.title}</h4>
-            <p className="text-sm font-bold text-slate-400 mb-8">{confirmModal.message}</p>
+            <p className="text-sm font-bold text-slate-400 mb-8 leading-relaxed">{confirmModal.message}</p>
             <div className="flex gap-3">
               <button type="button" onClick={() => setConfirmModal(p => ({ ...p, show: false }))} className="flex-1 py-4 bg-slate-800 rounded-2xl font-black text-[10px] uppercase tracking-widest text-slate-400">Cancelar</button>
-              <button type="button" onClick={confirmModal.onConfirm} className="flex-1 py-4 bg-red-600 rounded-2xl font-black text-[10px] uppercase tracking-widest text-white shadow-xl">Sí, Confirmar</button>
+              <button type="button" onClick={confirmModal.onConfirm} className="flex-1 py-4 bg-red-600 rounded-2xl font-black text-[10px] uppercase tracking-widest text-white shadow-xl">Confirmar</button>
             </div>
           </div>
         </div>
@@ -225,7 +233,17 @@ const App: React.FC = () => {
           <h1 className="text-2xl font-black italic tracking-tighter text-emerald-500">{APP_NAME}</h1>
           <p className="text-[10px] font-bold text-slate-500 uppercase">● {isFirebaseActive() ? 'Cloud Sync' : 'Local Mode'}</p>
         </div>
-        <img src={currentUser.avatar} className="w-10 h-10 rounded-full border-2 border-emerald-500 bg-slate-900" />
+        <div className="flex items-center gap-4">
+          <button 
+            type="button" 
+            onClick={handleLogout} 
+            className="text-slate-600 hover:text-red-500 transition-colors p-2 active:scale-90"
+            title="Cerrar Sesión"
+          >
+            <LogoutIcon />
+          </button>
+          <img src={currentUser.avatar} className="w-10 h-10 rounded-full border-2 border-emerald-500 bg-slate-900" />
+        </div>
       </header>
 
       <main className="p-5 max-w-lg mx-auto">
@@ -289,7 +307,6 @@ const App: React.FC = () => {
                     </div>
                   ))}
 
-                  {/* FORMULARIO DE EJERCICIO (RESTAURADO) */}
                   {editingExercise?.routineId === r.id ? (
                     <div className="bg-slate-950 p-6 rounded-[2.5rem] border border-emerald-500/30 shadow-2xl space-y-5 animate-in slide-in-from-top-4 mt-4">
                       <div className="flex justify-between items-center">
@@ -435,6 +452,7 @@ const NavButton = ({ active, onClick, label, icon }: any) => (
   </button>
 );
 
+const LogoutIcon = () => <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>;
 const EditIcon = () => <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>;
 const TrashIcon = () => <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>;
 const DashIcon = () => <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>;
