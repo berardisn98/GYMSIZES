@@ -30,6 +30,8 @@ export interface Exercise {
 
 export interface Routine {
   id: string;
+  // Added userId to satisfy Routine type requirements in App.tsx and cloud synchronization
+  userId: string;
   name: string;
   days: number[]; // 0-6 (Dom-Sab)
   exercises: Exercise[];

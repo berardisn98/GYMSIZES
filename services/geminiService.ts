@@ -3,13 +3,12 @@ import { GoogleGenAI } from "@google/genai";
 import { WorkoutLog } from "../types";
 
 export const getAIPerformanceAdvice = async (logs: WorkoutLog[]): Promise<string> => {
-  const apiKey = process.env.API_KEY;
-  
-  if (!apiKey) {
+  if (!process.env.API_KEY) {
     return "Configura tu API_KEY en Vercel para recibir consejos personalizados.";
   }
 
-  const ai = new GoogleGenAI({ apiKey });
+  // Always use direct initialization with process.env.API_KEY as per guidelines
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   const lastLogs = logs.slice(0, 5).map(l => 
     `${l.date}: ${l.routineName} (${l.exercises.map(e => `${e.name} ${e.weight}kg`).join(', ')})`
@@ -26,6 +25,7 @@ export const getAIPerformanceAdvice = async (logs: WorkoutLog[]): Promise<string
       model: 'gemini-3-flash-preview',
       contents: prompt,
     });
+    // The text property returns the generated string output directly.
     return response.text || "Sigue empujando, la constancia es la clave.";
   } catch (error) {
     console.error("Gemini Error:", error);
