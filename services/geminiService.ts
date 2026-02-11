@@ -3,36 +3,35 @@ import { GoogleGenAI } from "@google/genai";
 import { WorkoutLog } from "../types";
 
 export const getAIPerformanceAdvice = async (logs: WorkoutLog[]): Promise<string> => {
-  // El sistema obtiene la clave directamente de las variables de entorno de Vercel
+  // Obtenemos la clave directamente según las instrucciones del sistema
   const apiKey = process.env.API_KEY;
 
-  // Si la clave no está disponible (ej. durante el despliegue inicial)
-  if (!apiKey || apiKey === "undefined") {
-    return "El Coach IA está preparando tu plan de hoy. ¡Asegúrate de registrar tus series!";
-  }
-
-  // Si el usuario es nuevo y no tiene historial
+  // Si no hay logs, damos un mensaje de bienvenida sin gastar tokens
   if (!logs || logs.length === 0) {
-    return "¡Bienvenido a GYMSIZES! Completa tu primer entrenamiento para que pueda analizar tu rendimiento y darte consejos técnicos.";
+    return "¡Bienvenido a GYMSIZES! Registra tu primer entrenamiento para recibir consejos del Coach.";
   }
 
   try {
-    // Inicialización siguiendo estrictamente las reglas del SDK
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    
-    const historySummary = logs.slice(0, 3).map(l => 
-      `${l.routineName} (${l.exercises.length} exs)`
-    ).join(', ');
+    // Inicialización del cliente de última generación
+    const ai = new GoogleGenAI({ apiKey: apiKey || "" });
 
+    const historySummary = logs.slice(0, 3).map(l => 
+      `${l.routineName}: ${l.exercises.length} ejercicios realizados.`
+    ).join(' | ');
+
+    // Usamos el modelo más potente y rápido disponible: Gemini 3 Flash
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: `Analiza este breve historial: ${historySummary}. Dame un consejo de 15 palabras máximo en español. Usa términos como RPE, volumen o sobrecarga. Sé motivador.`,
+      contents: `Historial de entrenamiento: ${historySummary}. Dame un consejo técnico de 15 palabras en español sobre RPE o sobrecarga progresiva. Sé muy motivador.`,
     });
 
-    return response.text?.trim() || "¡Buen ritmo! Mantén la técnica y la intensidad alta.";
+    // En el nuevo SDK, .text es una propiedad directa, no un método ()
+    const advice = response.text;
+
+    return advice || "¡Sigue así! Mantén la intensidad y el volumen bajo control.";
   } catch (error) {
-    // Fallback profesional para no interrumpir la experiencia de usuario
-    console.warn("IA Sync Note:", error);
-    return "Enfócate en la sobrecarga progresiva esta semana. ¡Vas por buen camino!";
+    console.error("Error en Coach IA:", error);
+    // Si falla por la API KEY, el usuario verá este mensaje motivador mientras se propaga la clave
+    return "Enfócate en mejorar tu técnica en cada serie hoy. ¡La constancia es la clave del éxito!";
   }
 };
