@@ -71,7 +71,6 @@ const App: React.FC = () => {
     return () => { unsubRoutines?.(); unsubMyLogs?.(); };
   }, [currentUser]);
 
-  // Efecto mejorado para el Coach IA
   useEffect(() => {
     if (logs.length > 0) {
       setCoachAdvice("El Coach está analizando tus progresos...");
@@ -159,6 +158,14 @@ const App: React.FC = () => {
     });
   };
 
+  const deleteLog = (logId: string) => {
+    triggerConfirm("BORRAR REGISTRO", "¿Quieres eliminar este entrenamiento del historial permanentemente?", async () => {
+      setLogs(prev => prev.filter(l => l.id !== logId));
+      if (isFirebaseActive()) await deleteFromCloud('workout_logs', logId);
+      showToast("Registro eliminado");
+    });
+  };
+
   const saveExercise = async () => {
     if (!editingExercise || !currentUser) return;
     const exerciseData: Exercise = { 
@@ -205,6 +212,7 @@ const App: React.FC = () => {
     showToast("¡SESIÓN FINALIZADA! 🏆");
     setView('dash');
     setActiveRoutine(null);
+    setSessionProgress({});
   };
 
   if (!currentUser) return <Login users={friends} onLogin={(user, keep) => { if(keep) localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(user)); setCurrentUser(user); }} />;
@@ -212,7 +220,6 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-24 selection:bg-emerald-500/30">
       
-      {/* MODAL DE CONFIRMACIÓN */}
       {confirmModal.show && (
         <div className="fixed inset-0 z-[999] flex items-center justify-center p-6 bg-slate-950/95 backdrop-blur-md animate-in fade-in">
           <div className="bg-slate-900 border border-slate-800 p-8 rounded-[2.5rem] w-full max-w-sm shadow-2xl animate-in zoom-in-95 text-center">
@@ -240,14 +247,7 @@ const App: React.FC = () => {
           <p className="text-[10px] font-bold text-slate-500 uppercase">● {isFirebaseActive() ? 'Cloud Sync' : 'Local Mode'}</p>
         </div>
         <div className="flex items-center gap-4">
-          <button 
-            type="button" 
-            onClick={handleLogout} 
-            className="text-slate-600 hover:text-red-500 transition-colors p-2 active:scale-90"
-            title="Cerrar Sesión"
-          >
-            <LogoutIcon />
-          </button>
+          <button type="button" onClick={handleLogout} className="text-slate-600 hover:text-red-500 transition-colors p-2 active:scale-90"><LogoutIcon /></button>
           <img src={currentUser.avatar} className="w-10 h-10 rounded-full border-2 border-emerald-500 bg-slate-900" />
         </div>
       </header>
@@ -319,9 +319,7 @@ const App: React.FC = () => {
                         <h4 className="text-emerald-500 font-black italic uppercase text-[10px]">Configurar Ejercicio</h4>
                         <button type="button" onClick={() => setEditingExercise(null)} className="text-slate-600 p-2">✕</button>
                       </div>
-
                       <input value={newEx.name} onChange={e => setNewEx({...newEx, name: e.target.value})} placeholder="Nombre" className="w-full bg-slate-900 rounded-xl p-4 text-white text-sm font-bold border border-slate-800" />
-                      
                       <div className="grid grid-cols-2 gap-3">
                         <div className="bg-slate-900 p-3 rounded-xl text-center">
                           <label className="text-[8px] font-black text-slate-600 block mb-1">KG</label>
@@ -332,7 +330,6 @@ const App: React.FC = () => {
                           <input type="number" step="0.1" value={newEx.lbs} onChange={e => syncWeights(e.target.value, 'lbs', (k, l) => setNewEx(p => ({...p, kg: k, lbs: l})))} className="w-full bg-transparent text-center font-black italic text-white outline-none" />
                         </div>
                       </div>
-
                       <div className="grid grid-cols-2 gap-3">
                         <div className="flex items-center bg-slate-900 rounded-xl h-12 overflow-hidden border border-slate-800">
                           <button type="button" onClick={() => setNewEx({...newEx, sets: Math.max(1, newEx.sets - 1)})} className="flex-1 text-slate-500 font-black">-</button>
@@ -345,7 +342,6 @@ const App: React.FC = () => {
                           <button type="button" onClick={() => setNewEx({...newEx, reps: newEx.reps + 1})} className="flex-1 text-slate-500 font-black">+</button>
                         </div>
                       </div>
-
                       <div className="flex gap-2">
                         <button type="button" onClick={() => setEditingExercise(null)} className="flex-1 py-4 text-[9px] font-black uppercase text-slate-500">Cerrar</button>
                         <button type="button" onClick={saveExercise} className="flex-2 py-4 bg-emerald-600 rounded-xl text-white font-black text-[9px] uppercase shadow-lg">Guardar</button>
@@ -381,7 +377,6 @@ const App: React.FC = () => {
                     </div>
                   </div>
                 </div>
-
                 <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide">
                   {[...Array(ex.sets)].map((_, i) => {
                     const set = sessionProgress[ex.id]?.[i];
@@ -394,7 +389,6 @@ const App: React.FC = () => {
                     );
                   })}
                 </div>
-
                 {editingSet?.exId === ex.id && (
                   <div className="mt-4 p-6 bg-slate-950 rounded-3xl border border-emerald-500/20 space-y-6 animate-in slide-in-from-top-4">
                     <div className="text-center">
@@ -405,11 +399,14 @@ const App: React.FC = () => {
                       </div>
                       <p className="text-[9px] font-black text-slate-600 uppercase mt-4 tracking-widest">Repeticiones</p>
                     </div>
-
                     <div className="grid grid-cols-2 gap-3">
                        <button type="button" onClick={() => setEditingSet(null)} className="py-4 rounded-xl bg-slate-900 text-slate-500 font-black text-[10px] uppercase">Cancelar</button>
                        <button type="button" onClick={() => {
-                         setSessionProgress(prev => ({...prev, [ex.id]: (prev[ex.id] || []).map((s, i) => (i === editingSet.setIndex ? { reps: editingSet.reps, weight: parseFloat(editingSet.kg) } : s))}));
+                         setSessionProgress(prev => {
+                           const currentEx = [...(prev[ex.id] || Array(ex.sets).fill({reps: null, weight: null}))];
+                           currentEx[editingSet.setIndex] = { reps: editingSet.reps, weight: parseFloat(editingSet.kg) };
+                           return {...prev, [ex.id]: currentEx};
+                         });
                          setEditingSet(null);
                        }} className="py-4 rounded-xl bg-emerald-600 text-white font-black text-[10px] uppercase shadow-lg">Confirmar</button>
                     </div>
@@ -423,19 +420,46 @@ const App: React.FC = () => {
 
         {view === 'history' && (
           <div className="space-y-4">
-             <h2 className="text-lg font-black uppercase italic text-center">Tus Registros</h2>
-             {logs.length === 0 ? <div className="text-center py-20 text-slate-700 font-black uppercase text-xs">Sin actividad</div> : logs.map(log => (
-                <div key={log.id} className="bg-slate-900 p-6 rounded-[2.5rem] border border-slate-800 shadow-xl mb-4">
-                  <span className="text-emerald-400 font-black text-xs uppercase italic">{log.routineName}</span>
-                  <p className="text-slate-600 text-[9px] font-black uppercase mb-3">{log.date}</p>
-                  <div className="space-y-2">
-                    {log.exercises.map((e, i) => (
-                      <div key={i} className="flex justify-between items-center text-[10px] py-2 border-b border-slate-800/20 last:border-0">
-                        <span className="font-bold text-slate-300 uppercase italic">{e.name}</span>
-                        <div className="flex items-center gap-2"><span className="text-emerald-500 font-black">{e.weight}KG</span><span className="text-slate-500 font-black uppercase">{e.totalReps}r</span></div>
-                      </div>
-                    ))}
+             <h2 className="text-lg font-black uppercase italic text-center text-slate-400 mb-6">Tus Registros</h2>
+             {logs.length === 0 ? (
+                <div className="text-center py-20 bg-slate-900/50 rounded-[2.5rem] border border-dashed border-slate-800">
+                  <p className="text-slate-600 font-black uppercase text-xs">Sin actividad registrada aún</p>
+                </div>
+             ) : logs.map(log => (
+                <div key={log.id} className="bg-slate-900 p-6 rounded-[2.5rem] border border-slate-800 shadow-xl mb-4 relative overflow-hidden group">
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <span className="text-emerald-400 font-black text-xs uppercase italic tracking-tighter">{log.routineName}</span>
+                      <p className="text-slate-600 text-[9px] font-black uppercase tracking-widest mt-0.5">{log.date}</p>
+                    </div>
+                    <button 
+                      type="button" 
+                      onClick={() => deleteLog(log.id)} 
+                      className="text-red-500/30 hover:text-red-500 hover:bg-red-500/10 p-2.5 rounded-full transition-all active:scale-90"
+                      title="Borrar entrenamiento"
+                    >
+                      <TrashIcon />
+                    </button>
                   </div>
+                  
+                  <div className="space-y-3">
+                    {log.exercises && log.exercises.length > 0 ? log.exercises.map((e, i) => (
+                      <div key={i} className="flex justify-between items-center text-[11px] py-2 border-b border-slate-800/30 last:border-0">
+                        <span className="font-bold text-slate-300 uppercase italic tracking-tight">{e.name}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-emerald-500 font-black bg-emerald-500/10 px-2 py-0.5 rounded-md">{e.weight}KG</span>
+                          <span className="text-slate-500 font-black uppercase text-[9px]">{e.totalReps} REPS</span>
+                        </div>
+                      </div>
+                    )) : (
+                      <div className="py-2 text-center text-[9px] font-bold text-slate-600 uppercase italic">
+                        Sin detalles de ejercicios
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Decoración sutil */}
+                  <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-500/5 blur-3xl rounded-full -mr-8 -mt-8 pointer-events-none"></div>
                 </div>
              ))}
           </div>
