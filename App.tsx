@@ -198,18 +198,62 @@ const App: React.FC = () => {
     if (!activeRoutine || !currentUser) return;
     const logId = Date.now().toString();
     const date = new Date().toISOString().split('T')[0];
-    const sessionExercises = activeRoutine.exercises.map(ex => {
+    
+    // 1. Procesar los ejercicios realizados para el LOG e identificar nuevos pesos
+    const updatedExercisesForRoutine = [...activeRoutine.exercises];
+    
+    const sessionExercises = activeRoutine.exercises.map((ex, exIndex) => {
       const sets = sessionProgress[ex.id] || [];
       const completedSets = sets.filter(s => s.reps !== null && s.weight !== null);
       const totalReps = completedSets.reduce((acc, curr) => acc + (curr.reps || 0), 0);
-      const maxWeight = completedSets.length > 0 ? Math.max(...completedSets.map(s => s.weight || 0)) : ex.weight;
-      return { name: ex.name, weight: maxWeight, setsCompleted: completedSets.length, totalReps, wasSuccessful: completedSets.length === ex.sets };
+      
+      // Peso máximo utilizado en esta sesión para este ejercicio
+      const maxWeightThisSession = completedSets.length > 0 
+        ? Math.max(...completedSets.map(s => s.weight || 0)) 
+        : ex.weight;
+
+      // Si hubo cambios en el peso, actualizamos el objeto de la rutina para la sobrecarga progresiva
+      if (maxWeightThisSession !== ex.weight) {
+        updatedExercisesForRoutine[exIndex] = { ...ex, weight: maxWeightThisSession };
+      }
+
+      return { 
+        name: ex.name, 
+        weight: maxWeightThisSession, 
+        setsCompleted: completedSets.length, 
+        totalReps, 
+        wasSuccessful: completedSets.length === ex.sets 
+      };
     });
-    const newLog = { id: logId, userId: currentUser.id, userName: currentUser.name, date, routineId: activeRoutine.id, routineName: activeRoutine.name, exercises: sessionExercises };
+
+    // 2. Actualizar la rutina base con los nuevos pesos (Sobrecarga Progresiva)
+    const updatedRoutine = { ...activeRoutine, exercises: updatedExercisesForRoutine };
+    
+    setRoutines(prev => {
+      const newList = prev.map(r => r.id === updatedRoutine.id ? updatedRoutine : r);
+      localStorage.setItem(STORAGE_KEYS.ROUTINES, JSON.stringify(newList));
+      return newList;
+    });
+    
+    if (isFirebaseActive()) {
+      await saveToCloud('routines', updatedRoutine.id, updatedRoutine);
+    }
+
+    // 3. Guardar el LOG del entrenamiento
+    const newLog = { 
+      id: logId, 
+      userId: currentUser.id, 
+      userName: currentUser.name, 
+      date, 
+      routineId: activeRoutine.id, 
+      routineName: activeRoutine.name, 
+      exercises: sessionExercises 
+    };
     
     setLogs(prev => [newLog, ...prev]);
     if (isFirebaseActive()) await saveToCloud('workout_logs', logId, newLog);
-    showToast("¡SESIÓN FINALIZADA! 🏆");
+    
+    showToast("¡SESIÓN Y PROGRESOS GUARDADOS! 🏆");
     setView('dash');
     setActiveRoutine(null);
     setSessionProgress({});
@@ -382,7 +426,13 @@ const App: React.FC = () => {
                     const set = sessionProgress[ex.id]?.[i];
                     const isLogged = set?.reps !== null;
                     return (
-                      <button key={i} type="button" onClick={() => setEditingSet({ exId: ex.id, setIndex: i, reps: set?.reps || ex.reps, kg: (set?.weight || ex.weight).toString(), lbs: ((set?.weight || ex.weight) * KG_TO_LBS).toFixed(1) })} className={`min-w-[75px] h-16 rounded-2xl border-2 flex flex-col items-center justify-center font-black transition-all active:scale-90 ${isLogged ? 'bg-emerald-600 border-emerald-400 text-white' : 'bg-slate-800 border-slate-700 text-slate-600'}`}>
+                      <button key={i} type="button" onClick={() => setEditingSet({ 
+                        exId: ex.id, 
+                        setIndex: i, 
+                        reps: set?.reps || ex.reps, 
+                        kg: (set?.weight || ex.weight).toString(), 
+                        lbs: ((set?.weight || ex.weight) * KG_TO_LBS).toFixed(1) 
+                      })} className={`min-w-[75px] h-16 rounded-2xl border-2 flex flex-col items-center justify-center font-black transition-all active:scale-90 ${isLogged ? 'bg-emerald-600 border-emerald-400 text-white' : 'bg-slate-800 border-slate-700 text-slate-600'}`}>
                         <span className="text-[8px] opacity-60">S{i+1}</span>
                         <span className="text-lg leading-none mt-1">{isLogged ? set?.reps : '-'}</span>
                       </button>
@@ -391,14 +441,27 @@ const App: React.FC = () => {
                 </div>
                 {editingSet?.exId === ex.id && (
                   <div className="mt-4 p-6 bg-slate-950 rounded-3xl border border-emerald-500/20 space-y-6 animate-in slide-in-from-top-4">
+                    
                     <div className="text-center">
+                      <p className="text-[9px] font-black text-slate-600 uppercase mb-4 tracking-widest">Repeticiones</p>
                       <div className="flex items-center justify-center gap-8">
                         <button type="button" onClick={() => setEditingSet({...editingSet, reps: Math.max(0, editingSet.reps - 1)})} className="w-12 h-12 rounded-full border border-slate-800 bg-slate-900 text-2xl font-black">-</button>
                         <div className="text-5xl font-black italic text-emerald-400">{editingSet.reps}</div>
                         <button type="button" onClick={() => setEditingSet({...editingSet, reps: editingSet.reps + 1})} className="w-12 h-12 rounded-full border border-slate-800 bg-slate-900 text-2xl font-black">+</button>
                       </div>
-                      <p className="text-[9px] font-black text-slate-600 uppercase mt-4 tracking-widest">Repeticiones</p>
                     </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-slate-900 p-3 rounded-xl text-center border border-slate-800">
+                          <label className="text-[8px] font-black text-slate-600 block mb-1">KG PARA ESTA SERIE</label>
+                          <input type="number" step="0.5" value={editingSet.kg} onChange={e => syncWeights(e.target.value, 'kg', (k, l) => setEditingSet(p => ({...p!, kg: k, lbs: l})))} className="w-full bg-transparent text-center font-black italic text-emerald-400 outline-none text-xl" />
+                        </div>
+                        <div className="bg-slate-900 p-3 rounded-xl text-center border border-slate-800">
+                          <label className="text-[8px] font-black text-slate-600 block mb-1">LBS EQUIVALENTES</label>
+                          <input type="number" step="0.1" value={editingSet.lbs} onChange={e => syncWeights(e.target.value, 'lbs', (k, l) => setEditingSet(p => ({...p!, kg: k, lbs: l})))} className="w-full bg-transparent text-center font-black italic text-white outline-none text-xl" />
+                        </div>
+                    </div>
+
                     <div className="grid grid-cols-2 gap-3">
                        <button type="button" onClick={() => setEditingSet(null)} className="py-4 rounded-xl bg-slate-900 text-slate-500 font-black text-[10px] uppercase">Cancelar</button>
                        <button type="button" onClick={() => {
@@ -457,8 +520,6 @@ const App: React.FC = () => {
                       </div>
                     )}
                   </div>
-                  
-                  {/* Decoración sutil */}
                   <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-500/5 blur-3xl rounded-full -mr-8 -mt-8 pointer-events-none"></div>
                 </div>
              ))}
